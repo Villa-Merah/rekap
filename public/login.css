@@ -1,0 +1,32 @@
+.password-field {
+    display: block;
+    position: relative;
+}
+
+.password-field input {
+    padding-right: 48px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: calc(50% + 4px);
+    right: 10px;
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #84908f;
+}
+
+.password-toggle:hover {
+    color: #087d60;
+}
+
+.password-toggle:focus-visible {
+    outline: 3px solid #8dd8c1;
+    outline-offset: 2px;
+}

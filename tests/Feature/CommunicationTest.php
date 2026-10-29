@@ -26,6 +26,15 @@ class CommunicationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_login_page_has_a_password_visibility_toggle(): void
+    {
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('type="password"', false)
+            ->assertSee('data-password-toggle', false)
+            ->assertSee('password-visibility.js');
+    }
+
     public function test_new_user_must_change_initial_password_before_accessing_the_workspace(): void
     {
         $user = User::factory()->create([
