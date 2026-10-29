@@ -1,0 +1,12 @@
+@extends('work.layout')
+@section('title', 'Tugas & verifikasi')
+@section('subtitle', 'Pantau penugasan, kirim hasil, dan periksa bukti aktivitas tim.')
+@section('heading-action')
+@if(\App\Services\WorkAccess::manages(auth()->user()))<a class="primary" href="{{ route('tasks.create') }}">+ Buat tugas</a>@endif
+@endsection
+@section('content')
+<div class="summary-grid"><div class="summary"><div><strong>{{ $summary['total'] }}</strong><span>Tugas yang dapat diakses</span></div></div><div class="summary"><div><strong>{{ $summary['unfinished'] }}</strong><span>Tugas pribadi belum selesai</span></div></div><div class="summary"><div><strong>{{ $summary['waiting'] }}</strong><span>Menunggu pemeriksaan Anda</span></div></div></div>
+<form class="filter-bar" method="get"><input name="q" value="{{ request('q') }}" placeholder="Cari judul tugas…" aria-label="Cari judul tugas"><select name="status" aria-label="Status pengerjaan"><option value="">Semua status pengerjaan</option>@foreach(['Belum dikerjakan', 'Dalam proses', 'Menunggu verifikasi', 'Perlu perbaikan', 'Disetujui', 'Ditolak'] as $state)<option @selected(request('status') === $state)>{{ $state }}</option>@endforeach</select><button class="outline">Terapkan</button></form>
+<div class="task-grid">@forelse($tasks as $task)<a class="task-card" href="{{ route('tasks.show', $task->id) }}"><div class="card-meta"><span class="pill">{{ $task->platform }}</span><span class="muted">{{ $task->priority }}</span></div><h2>{{ $task->title }}</h2><p>{{ \Illuminate\Support\Str::limit($task->description, 120) }}</p><div class="card-meta"><span>{{ $task->branch }}</span><span>{{ $task->approved_count }}/{{ $task->recipients_count }} penerima disetujui</span></div><progress value="{{ $task->approved_count }}" max="{{ max(1, $task->recipients_count) }}"></progress><small>Tenggat {{ \Carbon\CarbonImmutable::parse($task->due_at, 'UTC')->setTimezone(config('workflow.timezone'))->format('d M Y, H:i') }} @if(\Carbon\CarbonImmutable::parse($task->due_at, 'UTC')->isPast() && $task->approved_count < $task->recipients_count)<span class="late"> · Melewati tenggat</span>@endif</small></a>@empty<div class="panel empty"><h2>Belum ada tugas.</h2><p>Tugas yang Anda terima atau kelola akan muncul di sini.</p></div>@endforelse</div>
+<div class="pagination">{{ $tasks->links() }}</div><p class="muted hint">Penyelesaian = penerima berstatus Disetujui ÷ seluruh penerima × 100%. Bukti menunggu verifikasi belum dihitung sebagai disetujui.</p>
+@endsection
