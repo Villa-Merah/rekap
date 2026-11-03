@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Masuk · Rekap Buzzer</title>
     <link rel="stylesheet" href="{{ asset('communication.css') }}">
-    <link rel="stylesheet" href="{{ asset('login.css') }}">
+    <link rel="stylesheet" href="{{ asset('login.css') }}?v={{ filemtime(public_path('login.css')) }}">
     <script src="{{ asset('password-visibility.js') }}" defer></script>
     <script src="{{ asset('omni-login.js') }}" defer></script>
 </head>

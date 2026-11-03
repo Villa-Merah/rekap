@@ -9,11 +9,12 @@
 
 .password-toggle {
     position: absolute;
-    top: calc(50% + 4px);
-    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 6px;
     display: grid;
-    width: 34px;
-    height: 34px;
+    width: 40px;
+    height: 40px;
     place-items: center;
     padding: 0;
     border: 0;
@@ -32,3 +33,43 @@
 }
 
 .sso-login{margin:24px 0 0}.sso-login .outline{width:100%;padding:13px;color:var(--green);font-weight:600}.sso-login p{font-size:11px;line-height:1.7;margin:10px 0}.sso-divider{font-size:11px!important;text-align:center;color:var(--muted);margin:18px 0!important}
+
+.login-card {
+    text-align: center;
+}
+
+.login-card .brand {
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.login-card form {
+    text-align: left;
+}
+
+.login-card > small {
+    display: block;
+    text-align: center;
+}
+
+.login-card .password-field {
+    margin-top: 9px;
+}
+
+.login-card .password-field input {
+    margin-top: 0;
+    padding-right: 52px;
+    min-height: 44px;
+}
+
+.password-toggle svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
+@media (max-width: 480px) {
+    .login-card {
+        padding: 30px 24px;
+    }
+}
