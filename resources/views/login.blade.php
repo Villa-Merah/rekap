@@ -2,11 +2,12 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Masuk · Rekap Buzzer</title>
     <link rel="stylesheet" href="{{ asset('communication.css') }}">
     <link rel="stylesheet" href="{{ asset('login.css') }}">
     <script src="{{ asset('password-visibility.js') }}" defer></script>
+    <script src="{{ asset('omni-login.js') }}" defer></script>
 </head>
 <body class="login-page">
     <main class="login-card">
@@ -14,6 +15,11 @@
         <p class="eyebrow">RUANG KERJA ORGANISASI</p>
         <h1>Selamat datang kembali.</h1>
         <p class="muted">Masuk untuk terhubung dengan tim Anda.</p>
+        @error('sso')<p class="error" role="alert">{{ $message }}</p>@enderror
+        @if(\App\Services\OmniClient::ready())
+        <div class="sso-login"><button class="outline" type="button" id="omni-login" data-prepare="{{ route('omni.prepare') }}">Masuk dengan akun SIVMI</button><p id="omni-status" role="status" aria-live="polite"></p><noscript><p>Aktifkan JavaScript dan izinkan popup untuk masuk melalui SIVMI.</p></noscript></div>
+        <p class="sso-divider">atau gunakan akun organisasi</p>
+        @endif
         <form method="post" action="{{ route('login') }}">
             @csrf
             <label>Email

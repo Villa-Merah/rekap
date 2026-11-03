@@ -7,6 +7,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.5",
+        "developerawam/omni-central-auth": "^1.0",
         "dompdf/dompdf": "^3.1",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0"
@@ -71,7 +72,7 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": ["developerawam/omni-central-auth"]
         }
     },
     "config": {

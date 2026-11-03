@@ -30,3 +30,5 @@
     outline: 3px solid #8dd8c1;
     outline-offset: 2px;
 }
+
+.sso-login{margin:24px 0 0}.sso-login .outline{width:100%;padding:13px;color:var(--green);font-weight:600}.sso-login p{font-size:11px;line-height:1.7;margin:10px 0}.sso-divider{font-size:11px!important;text-align:center;color:var(--muted);margin:18px 0!important}

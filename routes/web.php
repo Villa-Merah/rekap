@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\CommunicationController;
+use App\Http\Controllers\OmniLoginController;
 use App\Http\Controllers\StaffReportController;
 use App\Http\Controllers\WorkController;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    Route::post('/omni/prepare', [OmniLoginController::class, 'prepare'])->middleware('throttle:10,1')->name('omni.prepare');
+    Route::get('/omni/callback', [OmniLoginController::class, 'callback'])->middleware('throttle:20,1')->name('omni.callback');
     Route::get('/login', [CommunicationController::class, 'loginForm'])->name('login');
     Route::post('/login', [CommunicationController::class, 'login'])->middleware('throttle:5,1');
 });
