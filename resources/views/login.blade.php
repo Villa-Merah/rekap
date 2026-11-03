@@ -16,10 +16,13 @@
         <h1>Selamat datang kembali.</h1>
         <p class="muted">Masuk untuk terhubung dengan tim Anda.</p>
         @error('sso')<p class="error" role="alert">{{ $message }}</p>@enderror
-        @if(\App\Services\OmniClient::ready())
-        <div class="sso-login"><button class="outline" type="button" id="omni-login" data-prepare="{{ route('omni.prepare') }}">Masuk dengan akun SIVMI</button><p id="omni-status" role="status" aria-live="polite"></p><noscript><p>Aktifkan JavaScript dan izinkan popup untuk masuk melalui SIVMI.</p></noscript></div>
+        @php($ssoReady = \App\Services\OmniClient::ready())
+        <div class="sso-login">
+            <button class="outline" type="button" id="omni-login" data-prepare="{{ route('omni.prepare') }}" aria-describedby="omni-status" @disabled(!$ssoReady)>Masuk dengan akun SIVMI</button>
+            <p id="omni-status" role="status" aria-live="polite">{{ $ssoReady ? '' : 'Login SIVMI belum diaktifkan. Silakan gunakan akun organisasi atau hubungi administrator.' }}</p>
+            <noscript><p>Aktifkan JavaScript dan izinkan popup untuk masuk melalui SIVMI.</p></noscript>
+        </div>
         <p class="sso-divider">atau gunakan akun organisasi</p>
-        @endif
         <form method="post" action="{{ route('login') }}">
             @csrf
             <label>Email

@@ -33,7 +33,7 @@
         }
     });
     button.addEventListener('click', async () => {
-        if (flow) return;
+        if (flow || button.disabled) return;
         const popup = window.open('about:blank', 'omni-' + crypto.randomUUID(), 'popup,width=600,height=740');
         if (!popup) {
             status.textContent = 'Izinkan jendela popup untuk masuk dengan akun SIVMI.';

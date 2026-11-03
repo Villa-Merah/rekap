@@ -42,7 +42,7 @@ class OmniLoginTest extends TestCase
     public function test_unconfigured_sso_keeps_local_login_and_rejects_preparation(): void
     {
         config(['omni-central-auth.enabled' => false]);
-        $this->get('/login')->assertOk()->assertSee('Masuk ke ruang kerja')->assertDontSee('id="omni-login"', false);
+        $this->get('/login')->assertOk()->assertSee('Masuk ke ruang kerja')->assertSee('id="omni-login"', false)->assertSee('Login SIVMI belum diaktifkan.');
         $this->postJson('/omni/prepare')->assertStatus(503)->assertJsonPath('message', 'Login SSO belum diaktifkan oleh administrator.');
         $this->get('/register')->assertNotFound();
         $this->get('/omni-dashboard')->assertNotFound();
@@ -171,7 +171,7 @@ class OmniLoginTest extends TestCase
     {
         $this->enableSso();
         config(['omni-central-auth.client.signing_key' => '']);
-        $this->get('/login')->assertOk()->assertDontSee('id="omni-login"', false);
+        $this->get('/login')->assertOk()->assertSee('id="omni-login"', false)->assertSee('Login SIVMI belum diaktifkan.');
         $this->postJson('/omni/prepare')->assertStatus(503);
     }
 
@@ -192,5 +192,21 @@ class OmniLoginTest extends TestCase
             ->assertRedirect('/login')->assertSessionHasErrors('sso');
         $this->assertGuest();
         $this->assertDatabaseHas('users', ['id' => $staff->id, 'omni_id' => null]);
+    }
+
+    public function test_sivmi_button_remains_visible_and_disabled_until_sso_is_ready(): void
+    {
+        config(['omni-central-auth.enabled' => false]);
+        $response = $this->get('/login')->assertOk();
+        $document = new \DOMDocument;
+        @$document->loadHTML($response->getContent());
+        $button = $document->getElementById('omni-login');
+        $this->assertNotNull($button);
+        $this->assertTrue($button->hasAttribute('disabled'));
+
+        $this->enableSso();
+        $response = $this->get('/login')->assertOk();
+        @$document->loadHTML($response->getContent());
+        $this->assertFalse($document->getElementById('omni-login')->hasAttribute('disabled'));
     }
 }
