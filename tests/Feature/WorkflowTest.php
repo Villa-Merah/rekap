@@ -196,7 +196,7 @@ class WorkflowTest extends TestCase
         foreach (['Google/Gmail', 'YouTube', 'Instagram', 'Facebook', 'TikTok'] as $platform) {
             $response->assertSee($platform);
             $response->assertSee(
-                '<tr><td>'.e($staff->name).'</td><td>'.$platform.'</td><td>10</td><td>0</td><td><span class="pill warning">10</span></td></tr>',
+                'aria-label="'.$platform.': 0 dari 10 akun terdaftar"',
                 false,
             );
         }

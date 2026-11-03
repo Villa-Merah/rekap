@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CommunicationController;
+use App\Http\Controllers\StaffReportController;
 use App\Http\Controllers\WorkController;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,8 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', EnsurePasswordIsChanged::class])->group(function () {
     Route::get('/password/change', [CommunicationController::class, 'changePassword'])->name('password.change');
     Route::put('/password/change', [CommunicationController::class, 'updatePassword'])->name('password.update');
+    Route::get('/reports', [StaffReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/pdf', [StaffReportController::class, 'download'])->middleware('throttle:6,1')->name('reports.download');
     Route::get('/tasks', [WorkController::class, 'index'])->name('tasks.index');
     Route::get('/tasks/create', [WorkController::class, 'create'])->name('tasks.create');
     Route::post('/tasks', [WorkController::class, 'store'])->name('tasks.store');
