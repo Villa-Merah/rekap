@@ -13,6 +13,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', EnsurePasswordIsChanged::class])->group(function () {
     Route::get('/password/change', [CommunicationController::class, 'changePassword'])->name('password.change');
     Route::put('/password/change', [CommunicationController::class, 'updatePassword'])->name('password.update');
+    Route::view('/guide', 'work.guide')->name('guide');
     Route::get('/reports', [StaffReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/pdf', [StaffReportController::class, 'download'])->middleware('throttle:6,1')->name('reports.download');
     Route::get('/tasks', [WorkController::class, 'index'])->name('tasks.index');
