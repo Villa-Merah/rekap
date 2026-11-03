@@ -1,0 +1,19 @@
+# Shared hosting: route the project root through Laravel's public directory.
+# Keep public/.htaccess in place for Laravel's front controller routing.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Deny hidden files and directories, while retaining ACME challenges.
+    RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L]
+
+    # Leave certificate verification requests alone.
+    RewriteRule ^\.well-known(?:/|$) - [L]
+
+    # Avoid rewriting a request that already targets the public directory.
+    RewriteRule ^public(?:/|$) - [L]
+
+    # Never serve existing project files directly from the project root.
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
