@@ -260,6 +260,29 @@ class WorkController extends Controller
         return view('work.accounts', compact('accounts', 'members', 'counts', 'quotas', 'supervisors'));
     }
 
+    public function users(Request $request): View
+    {
+        $actor = $request->user();
+        abort_unless(WorkAccess::manages($actor), 403);
+        $filters = $request->validate([
+            'q' => 'nullable|string|max:100',
+            'role' => ['nullable', Rule::in(self::USER_ROLES)],
+            'branch' => 'nullable|string|max:255',
+        ]);
+        $scope = User::query()->when($actor->role !== 'Superadmin', fn ($query) => $query->where('branch', $actor->branch));
+        $totalMembers = (clone $scope)->count();
+        $branches = (clone $scope)->whereNotNull('branch')->where('branch', '!=', '')->distinct()->orderBy('branch')->pluck('branch');
+        $keyword = $filters['q'] ?? '';
+        $users = $scope->when($keyword !== '', fn ($query) => $query->where(fn ($query) => $query->where('name', 'like', '%'.$keyword.'%')->orWhere('email', 'like', '%'.$keyword.'%')))
+            ->when($filters['role'] ?? null, fn ($query, $role) => $query->where('role', $role))
+            ->when($filters['branch'] ?? null, fn ($query, $branch) => $query->where('branch', $branch))
+            ->select(['id', 'name', 'email', 'role', 'branch', 'must_change_password', 'omni_id', 'created_at'])
+            ->orderByDesc('id')->paginate(20)->withQueryString();
+        $roles = self::USER_ROLES;
+
+        return view('work.users.index', compact('users', 'totalMembers', 'branches', 'roles'));
+    }
+
     public function createUser(Request $request): View
     {
         $actor = $request->user();

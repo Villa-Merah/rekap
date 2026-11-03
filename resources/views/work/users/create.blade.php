@@ -2,7 +2,7 @@
 @section('title', 'Tambah pengguna')
 @section('subtitle', 'Buat akun pengguna baru untuk organisasi atau cabang Anda.')
 @section('heading-action')
-    <a class="outline" href="{{ route('accounts.index') }}">Kembali ke akun & target</a>
+    <a class="outline" href="{{ route('users.index') }}">Lihat data pengguna</a>
 @endsection
 @section('content')
     <section class="panel">

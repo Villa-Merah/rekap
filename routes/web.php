@@ -30,6 +30,7 @@ Route::middleware(['auth', EnsurePasswordIsChanged::class])->group(function () {
     Route::get('/accounts', [WorkController::class, 'accounts'])->name('accounts.index');
     Route::post('/accounts', [WorkController::class, 'storeAccount'])->name('accounts.store');
     Route::post('/account-quotas', [WorkController::class, 'quota'])->name('accounts.quota');
+    Route::get('/users', [WorkController::class, 'users'])->name('users.index');
     Route::get('/users/create', [WorkController::class, 'createUser'])->name('users.create');
     Route::post('/users', [WorkController::class, 'storeUser'])->name('users.store');
     Route::post('/supervisors', [WorkController::class, 'supervisor'])->name('users.supervisor');
