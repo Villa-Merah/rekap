@@ -4,14 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Masuk · Rekap Buzzer</title>
-    <link rel="stylesheet" href="{{ asset('communication.css') }}">
+    <link rel="stylesheet" href="{{ asset('communication.css') }}?v={{ filemtime(public_path('communication.css')) }}">
     <link rel="stylesheet" href="{{ asset('login.css') }}?v={{ filemtime(public_path('login.css')) }}">
     <script src="{{ asset('password-visibility.js') }}" defer></script>
     <script src="{{ asset('omni-login.js') }}" defer></script>
 </head>
 <body class="login-page">
     <main class="login-card">
-        <div class="brand">r<span> Rekap Buzzer</span></div>
+        <div class="brand"><img class="brand-logo" src="{{ asset('logo%20VM_-4.png') }}" alt="Bimbel Gambar Villa Merah" width="84" height="84"><span>Rekap Buzzer</span></div>
         <p class="eyebrow">RUANG KERJA ORGANISASI</p>
         <h1>Selamat datang kembali.</h1>
         <p class="muted">Masuk untuk terhubung dengan tim Anda.</p>
