@@ -53,7 +53,7 @@ class StaffReportController extends Controller
         } catch (\RuntimeException $exception) {
             report($exception);
 
-            return response()->view('work.reports', [...$data, 'pdfError' => 'PDF belum dapat dibuat. Pastikan browser Chrome/Edge tersedia atau atur REPORT_PDF_BROWSER pada server, lalu coba kembali.'], 503);
+            return response()->view('work.reports', [...$data, 'pdfError' => 'PDF belum dapat dibuat. Pastikan dependensi Composer dan ekstensi PHP GD sudah terpasang serta folder storage dapat ditulis, lalu coba kembali.'], 503);
         }
 
         $filename = 'laporan-staf-'.$data['member']->id.'-'.$data['from'].'-'.$data['to'].'.pdf';

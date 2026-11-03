@@ -4,11 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class StaffReportTest extends TestCase
@@ -98,51 +98,36 @@ class StaffReportTest extends TestCase
             ['submission_id' => $latest, 'path' => 'evidence/latest.png', 'mime' => 'image/png', 'original_name' => 'latest.png'],
             ['submission_id' => $latest, 'path' => 'evidence/missing.png', 'mime' => 'image/png', 'original_name' => 'missing.png'],
         ]);
-        config(['reports.browser' => PHP_BINARY]);
-        $temporaryDirectory = null;
-        Process::fake(function (PendingProcess $process) use (&$temporaryDirectory): int {
-            $command = $process->command;
-            $outputArgument = collect($command)->first(fn (string $argument): bool => str_starts_with($argument, '--print-to-pdf='));
-            $output = substr($outputArgument, strlen('--print-to-pdf='));
-            $temporaryDirectory = dirname($output);
-            $html = File::get($temporaryDirectory.'/report.html');
-            $this->assertStringContainsString('data:image/png;base64,', $html);
-            $this->assertStringContainsString('latest.png', $html);
-            $this->assertStringContainsString('Gambar bukti tidak tersedia', $html);
-            $this->assertStringContainsString('&lt;script&gt;', $html);
-            $this->assertStringNotContainsString('<script>', $html);
-            $this->assertStringNotContainsString('old.png', $html);
-            $this->assertStringNotContainsString('Revisi lama rahasia', $html);
-            File::put($output, '%PDF-1.7 test response');
-
-            return 0;
-        });
-        $this->actingAs($staff)->get('/reports/pdf?from=2026-11-01&to=2026-11-03')
+        Process::fake();
+        $before = File::isDirectory(storage_path('app/private/report-temp')) ? File::directories(storage_path('app/private/report-temp')) : [];
+        $this->actingAs($staff)->get('/reports?from=2026-11-01&to=2026-11-03')
+            ->assertOk()->assertSee('&lt;script&gt;', false)->assertDontSee('old.png')->assertDontSee('Revisi lama rahasia');
+        $response = $this->get('/reports/pdf?from=2026-11-01&to=2026-11-03')
             ->assertOk()->assertHeader('Content-Type', 'application/pdf')
             ->assertDownload('laporan-staf-'.$staff->id.'-2026-11-01-2026-11-03.pdf');
-        Process::assertRan(fn (PendingProcess $process): bool => in_array('--headless', $process->command, true));
-        $this->assertDirectoryDoesNotExist($temporaryDirectory);
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+        $this->assertStringContainsString('/Subtype /Image', $response->getContent());
+        $this->assertSame($before, File::directories(storage_path('app/private/report-temp')));
+        Process::assertNothingRan();
+        Storage::disk('local')->assertExists('evidence/latest.png');
     }
 
-    public function test_unavailable_pdf_browser_returns_actionable_error(): void
+    public function test_empty_report_downloads_without_browser_or_shell_process(): void
     {
-        config(['reports.browser' => null]);
-        $this->actingAs($this->member())->get('/reports/pdf')->assertStatus(503)->assertSee('REPORT_PDF_BROWSER');
+        Process::fake();
+        $response = $this->actingAs($this->member())->get('/reports/pdf?from=2026-11-01&to=2026-11-03')
+            ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+        $this->assertStringContainsString('%%EOF', $response->getContent());
+        Process::assertNothingRan();
     }
 
-    public function test_pdf_failure_cleans_temporary_files(): void
+    public function test_pdf_storage_failure_returns_actionable_error(): void
     {
-        config(['reports.browser' => PHP_BINARY]);
-        $temporaryDirectory = null;
-        Process::fake(function (PendingProcess $process) use (&$temporaryDirectory): int {
-            $argument = collect($process->command)->first(fn (string $value): bool => str_starts_with($value, '--print-to-pdf='));
-            $temporaryDirectory = dirname(substr($argument, strlen('--print-to-pdf=')));
-
-            return 1;
-        });
-        $this->actingAs($this->member())->get('/reports/pdf')->assertStatus(503);
-        Process::assertRan(fn (PendingProcess $process): bool => in_array('--headless', $process->command, true));
-        $this->assertDirectoryDoesNotExist($temporaryDirectory);
+        $staff = $this->member();
+        File::partialMock()->shouldReceive('makeDirectory')->once()->andThrow(new \RuntimeException('Storage is unavailable.'));
+        $this->actingAs($staff)->get('/reports/pdf?from=2026-11-01&to=2026-11-03')
+            ->assertStatus(503)->assertSee('folder storage dapat ditulis');
     }
 
     public function test_oversized_evidence_requests_a_shorter_period_without_starting_browser(): void
@@ -167,5 +152,38 @@ class StaffReportTest extends TestCase
             ->assertStatus(422)->assertSee('Pilih periode lebih pendek');
         Process::assertNothingRan();
         Storage::disk('local')->assertExists('evidence/large.png');
+    }
+
+    #[TestWith(['png'])]
+    #[TestWith(['jpg'])]
+    #[TestWith(['webp'])]
+    public function test_pdf_includes_supported_screenshot_formats(string $format): void
+    {
+        Storage::fake('local');
+        $staff = $this->member();
+        $assignment = $this->assignment($staff, $this->member('Kacab'), 'Disetujui');
+        $submission = DB::table('task_submissions')->insertGetId([
+            'assignment_id' => $assignment, 'revision' => 1, 'reported_activities' => '[]',
+            'created_at' => '2026-11-02 06:00:00',
+        ]);
+        $image = imagecreatetruecolor(40, 30);
+        ob_start();
+        match ($format) {
+            'png' => imagepng($image),
+            'jpg' => imagejpeg($image),
+            'webp' => imagewebp($image),
+        };
+        $contents = ob_get_clean();
+        $path = 'evidence/proof.'.$format;
+        Storage::disk('local')->put($path, $contents);
+        DB::table('task_evidence')->insert([
+            'submission_id' => $submission, 'path' => $path,
+            'mime' => $format === 'jpg' ? 'image/jpeg' : 'image/'.$format, 'original_name' => 'proof.'.$format,
+        ]);
+
+        $response = $this->actingAs($staff)->get('/reports/pdf?from=2026-11-01&to=2026-11-03')
+            ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('/Subtype /Image', $response->getContent());
+        Storage::disk('local')->assertExists($path);
     }
 }
