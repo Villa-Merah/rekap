@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\WorkNotice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class CommunicationController extends Controller
             return back()->withErrors(['email' => 'Email atau kata sandi tidak sesuai.'])->onlyInput('email');
         }
         $request->session()->regenerate();
+        WorkNotice::audit($request->user()->id, 'Masuk melalui email', 'user', $request->user()->id);
 
         if ($request->user()->must_change_password) {
             return redirect()->route('password.change');
@@ -51,11 +53,14 @@ class CommunicationController extends Controller
             'must_change_password' => false,
         ])->save();
 
+        WorkNotice::audit($request->user()->id, 'Kata sandi diganti', 'user', $request->user()->id);
+
         return redirect()->route('dashboard')->with('success', 'Kata sandi berhasil diganti.');
     }
 
     public function logout(Request $request): RedirectResponse
     {
+        WorkNotice::audit($request->user()->id, 'Keluar dari aplikasi', 'user', $request->user()->id);
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
