@@ -306,7 +306,7 @@ class WorkController extends Controller
             'branch' => 'nullable|required_unless:role,Superadmin|string|max:255',
             'password' => 'required|string|min:8|confirmed',
         ]);
-        $branch = $actor->role === 'Superadmin' ? ($data['branch'] ?: null) : $actor->branch;
+        $branch = $actor->role === 'Superadmin' ? ($data['branch'] ?? null) : $actor->branch;
 
         DB::transaction(function () use ($actor, $data, $branch): void {
             $user = new User;

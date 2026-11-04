@@ -17,6 +17,16 @@ class UserCrudTest extends TestCase
         return array_replace(['name' => $member->name, 'email' => $member->email, 'role' => $member->role, 'branch' => $member->branch], $changes);
     }
 
+    public function test_superadmin_can_create_another_superadmin_without_a_branch_field(): void
+    {
+        $admin = User::factory()->create(['role' => 'Superadmin']);
+        $this->actingAs($admin)->post('/users', [
+            'name' => 'Admin baru', 'email' => 'admin-baru@example.test', 'role' => 'Superadmin',
+            'password' => 'initial-password-123', 'password_confirmation' => 'initial-password-123',
+        ])->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertDatabaseHas('users', ['email' => 'admin-baru@example.test', 'role' => 'Superadmin', 'branch' => null, 'must_change_password' => true]);
+    }
+
     public function test_guest_and_staff_cannot_manage_users(): void
     {
         $member = User::factory()->create(['role' => 'Staff', 'branch' => 'Jakarta']);

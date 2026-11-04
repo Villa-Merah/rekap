@@ -66,6 +66,22 @@ class MyProfileTest extends TestCase
             ->assertSee('like, share')->assertSee(route('evidence.show', $file))->assertDontSee('Catatan revisi lama');
     }
 
+    public function test_profile_renders_actual_per_account_activity_records(): void
+    {
+        $user = User::factory()->create();
+        $assignment = $this->assignment($user, 'Menunggu verifikasi', 'Tugas dengan aktivitas nyata');
+        DB::table('task_submissions')->insert([
+            'assignment_id' => $assignment, 'revision' => 1,
+            'reported_activities' => json_encode([
+                ['account_id' => 1, 'account_name' => 'Akun satu', 'identity' => '@satu', 'activity' => 'like', 'performed_at' => '2026-01-02T00:00:00Z', 'evidence_ids' => []],
+                ['account_id' => 1, 'account_name' => 'Akun satu', 'identity' => '@satu', 'activity' => 'share', 'performed_at' => '2026-01-02T00:00:00Z', 'evidence_ids' => []],
+                ['account_id' => 2, 'account_name' => 'Akun dua', 'identity' => '@dua', 'activity' => 'like', 'performed_at' => '2026-01-02T00:00:00Z', 'evidence_ids' => []],
+            ]),
+            'created_at' => '2026-01-02 00:00:00',
+        ]);
+        $this->actingAs($user)->get('/my-profile')->assertOk()->assertSee('Aktivitas dilaporkan: like, share');
+    }
+
     public function test_profile_paginates_history_without_changing_summary(): void
     {
         $user = User::factory()->create(['role' => 'Staff']);

@@ -29,6 +29,12 @@ class MyProfileController extends Controller
         $latestSubmissionIds = DB::table('task_submissions')->whereIn('assignment_id', $assignments->pluck('id'))
             ->selectRaw('MAX(id) as id')->groupBy('assignment_id');
         $submissions = DB::table('task_submissions')->whereIn('id', $latestSubmissionIds)->get()->keyBy('assignment_id');
+        foreach ($submissions as $submission) {
+            $submission->activity_labels = collect(json_decode($submission->reported_activities, true) ?? [])
+                ->map(fn ($activity) => is_array($activity) ? ($activity['activity'] ?? null) : $activity)
+                ->filter(fn ($activity) => is_string($activity) && $activity !== '')
+                ->unique()->implode(', ');
+        }
         $evidence = DB::table('task_evidence')->whereIn('submission_id', $submissions->pluck('id'))
             ->orderBy('id')->get()->groupBy('submission_id');
         $accountQuery = DB::table('social_accounts')->where('user_id', $member->id);
