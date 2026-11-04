@@ -10,7 +10,7 @@
 </head>
 <body class="login-page">
     <main class="login-card">
-        <div class="brand"><img class="brand-logo" src="{{ asset('logo%20VM_-4.png') }}" alt="Bimbel Gambar Villa Merah" width="84" height="84"><span>Rekap Buzzer</span></div>
+        <div class="brand"><img class="brand-logo" src="{{ asset('logo-villa-merah.png') }}?v={{ filemtime(public_path('logo-villa-merah.png')) }}" alt="Bimbel Gambar Villa Merah" width="84" height="84"><span>Rekap Buzzer</span></div>
         <p class="eyebrow">KEAMANAN AKUN</p>
         <h1>Ganti kata sandi awal.</h1>
         <p class="muted">Buat kata sandi baru sebelum melanjutkan ke ruang kerja.</p>

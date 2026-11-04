@@ -11,7 +11,7 @@
 </head>
 <body class="login-page">
     <main class="login-card">
-        <div class="brand"><img class="brand-logo" src="{{ asset('logo%20VM_-4.png') }}" alt="Bimbel Gambar Villa Merah" width="84" height="84"><span>Rekap Buzzer</span></div>
+        <div class="brand"><img class="brand-logo" src="{{ asset('logo-villa-merah.png') }}?v={{ filemtime(public_path('logo-villa-merah.png')) }}" alt="Bimbel Gambar Villa Merah" width="84" height="84"><span>Rekap Buzzer</span></div>
         <p class="eyebrow">RUANG KERJA ORGANISASI</p>
         <h1>Selamat datang kembali.</h1>
         <p class="muted">Masuk untuk terhubung dengan tim Anda.</p>
