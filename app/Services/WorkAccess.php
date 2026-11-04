@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\DB;
 
 class WorkAccess
 {
+    public static function readOnly(User $user): bool
+    {
+        return in_array(mb_strtolower(trim($user->role)), ['direktur utama', 'direktur', 'komisaris'], true);
+    }
+
     public static function manages(User $user, ?string $branch = null): bool
     {
         return $user->role === 'Superadmin' || ($user->role === 'Kacab' && $user->branch !== null && ($branch === null || $user->branch === $branch));

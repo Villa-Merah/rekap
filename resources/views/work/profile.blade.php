@@ -22,7 +22,7 @@
 @if($target > 0)<progress value="{{ min($registered, $target) }}" max="{{ $target }}" aria-label="{{ $platform }}: {{ $registered }} dari {{ $target }} akun"></progress><p class="hint">Target {{ $target }} · {{ $registered >= $target ? 'Target terpenuhi' : 'Kurang '.($target - $registered).' akun' }}</p>@else<p class="muted hint">Tanpa target</p>@endif</article>
 @endforeach
 </div>
-<p><a class="outline" href="{{ route('accounts.index') }}">Daftarkan akun</a></p>
+@if(!\App\Services\WorkAccess::readOnly(auth()->user()))<p><a class="outline" href="{{ route('accounts.index') }}">Daftarkan akun</a></p>@endif
 <div class="table-scroll"><table><thead><tr><th>Platform</th><th>Nama akun</th><th>Username / email</th><th>Status</th><th>Terdaftar</th></tr></thead><tbody>
 @forelse($accounts as $account)<tr><td>{{ $account->platform }}</td><td>{{ $account->name }}@if($account->profile_url && in_array(strtolower(parse_url($account->profile_url, PHP_URL_SCHEME) ?? ''), ['https', 'http'], true))<small><a href="{{ $account->profile_url }}" target="_blank" rel="noopener noreferrer">Buka profil ↗</a></small>@endif</td><td>{{ $account->identity }}</td><td>{{ $account->status }}</td><td>{{ $account->created_at ? \Carbon\CarbonImmutable::parse($account->created_at, 'UTC')->setTimezone(config('workflow.timezone'))->format('d M Y H:i') : '—' }}</td></tr>
 @empty<tr><td colspan="5">Belum ada akun yang didaftarkan.</td></tr>@endforelse

@@ -6,6 +6,7 @@ use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\OmniLoginController;
 use App\Http\Controllers\StaffReportController;
 use App\Http\Controllers\WorkController;
+use App\Http\Middleware\EnforceReadOnlyRole;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use Illuminate\Support\Facades\Route;
 
@@ -15,7 +16,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [CommunicationController::class, 'loginForm'])->name('login');
     Route::post('/login', [CommunicationController::class, 'login'])->middleware('throttle:5,1');
 });
-Route::middleware(['auth', EnsurePasswordIsChanged::class])->group(function () {
+Route::middleware(['auth', EnsurePasswordIsChanged::class, EnforceReadOnlyRole::class])->group(function () {
     Route::get('/password/change', [CommunicationController::class, 'changePassword'])->name('password.change');
     Route::put('/password/change', [CommunicationController::class, 'updatePassword'])->name('password.update');
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
