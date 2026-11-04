@@ -35,6 +35,9 @@ Route::middleware(['auth', EnsurePasswordIsChanged::class])->group(function () {
     Route::get('/users', [WorkController::class, 'users'])->name('users.index');
     Route::get('/users/create', [WorkController::class, 'createUser'])->name('users.create');
     Route::post('/users', [WorkController::class, 'storeUser'])->name('users.store');
+    Route::get('/users/{user}/edit', [WorkController::class, 'editUser'])->whereNumber('user')->name('users.edit');
+    Route::put('/users/{user}', [WorkController::class, 'updateUser'])->whereNumber('user')->name('users.update');
+    Route::delete('/users/{user}', [WorkController::class, 'destroyUser'])->whereNumber('user')->name('users.destroy');
     Route::post('/supervisors', [WorkController::class, 'supervisor'])->name('users.supervisor');
     Route::get('/', [CommunicationController::class, 'index'])->name('dashboard');
     Route::post('/logout', [CommunicationController::class, 'logout'])->name('logout');

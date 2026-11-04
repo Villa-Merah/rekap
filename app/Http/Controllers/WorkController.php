@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\WorkAccess;
 use App\Services\WorkNotice;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class WorkController extends Controller
 {
-    private const USER_ROLES = ['Staff', 'Marketing', 'Kacab', 'Direktur', 'Superadmin'];
+    private const USER_ROLES = ['Staff', 'Pengajar', 'Marketing', 'Operasional', 'Akademik', 'Keuangan', 'Kacab', 'Direktur', 'Direktur Utama', 'Komisaris', 'Superadmin'];
 
     private function task(int $id): object
     {
@@ -343,6 +344,100 @@ class WorkController extends Controller
         });
 
         return back()->with('success', 'Pengguna berhasil ditambahkan. Sampaikan kata sandi awal melalui jalur yang aman.');
+    }
+
+    private function manageableUser(Request $request, int $id): User
+    {
+        $actor = $request->user();
+        abort_unless(WorkAccess::manages($actor), 403);
+        $member = User::query()->when($actor->role !== 'Superadmin', fn ($query) => $query
+            ->where('branch', $actor->branch)->whereIn('role', ['Staff', 'Marketing']))->findOrFail($id);
+
+        return $member;
+    }
+
+    public function editUser(Request $request, int $user): View
+    {
+        $member = $this->manageableUser($request, $user);
+        $manageableRoles = $request->user()->role === 'Superadmin' ? self::USER_ROLES : ['Staff', 'Marketing'];
+
+        return view('work.users.edit', compact('member', 'manageableRoles'));
+    }
+
+    public function updateUser(Request $request, int $user): RedirectResponse
+    {
+        $member = $this->manageableUser($request, $user);
+        $actor = $request->user();
+        $roles = $actor->role === 'Superadmin' ? self::USER_ROLES : ['Staff', 'Marketing'];
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($member->id)],
+            'role' => ['required', Rule::in($roles)],
+            'branch' => 'nullable|required_unless:role,Superadmin|string|max:255',
+            'password' => 'nullable|string|min:8|confirmed',
+        ]);
+        if ($member->id === $actor->id && $data['role'] !== $member->role) {
+            throw ValidationException::withMessages(['role' => 'Jabatan akun sendiri tidak dapat diubah.']);
+        }
+        $branch = $actor->role === 'Superadmin' ? ($data['branch'] ?? null) : $actor->branch;
+        DB::transaction(function () use ($member, $actor, $data, $branch): void {
+            $oldEmail = $member->email;
+            $changes = ['name' => $data['name'], 'email' => $data['email'], 'role' => $data['role'], 'branch' => $branch];
+            if ($oldEmail !== $data['email']) {
+                $changes['email_verified_at'] = null;
+                $changes['omni_id'] = null;
+                $changes['remember_token'] = null;
+            }
+            if (! empty($data['password'])) {
+                $changes['password'] = $data['password'];
+                $changes['must_change_password'] = true;
+                $changes['remember_token'] = null;
+            }
+            $member->forceFill($changes)->save();
+            if (! empty($data['password']) || $oldEmail !== $data['email']) {
+                DB::table('sessions')->where('user_id', $member->id)->delete();
+                DB::table('password_reset_tokens')->whereIn('email', [$oldEmail, $data['email']])->delete();
+            }
+            if ($data['role'] === 'Staff') {
+                foreach (config('workflow.account_platforms') as $platform) {
+                    DB::table('account_quotas')->insertOrIgnore(['user_id' => $member->id, 'platform' => $platform,
+                        'required_count' => config('workflow.account_target'), 'created_at' => now(), 'updated_at' => now()]);
+                }
+            }
+            WorkNotice::audit($actor->id, 'Pengguna diperbarui', 'user', $member->id, ['role' => $data['role'], 'branch' => $branch]);
+        });
+
+        return redirect()->route('users.index')->with('success', 'Data pengguna berhasil diperbarui.');
+    }
+
+    public function destroyUser(Request $request, int $user): RedirectResponse
+    {
+        $member = $this->manageableUser($request, $user);
+        abort_if($member->id === $request->user()->id, 403, 'Akun sendiri tidak dapat dihapus.');
+        $request->validate(['confirmation' => ['required', 'string', Rule::in([$member->email])]]);
+        try {
+            DB::transaction(function () use ($member, $request): void {
+                User::whereKey($member->id)->lockForUpdate()->firstOrFail();
+                $hasHistory = DB::table('work_tasks')->where('creator_id', $member->id)->exists()
+                    || DB::table('task_assignments')->where(fn ($query) => $query->where('user_id', $member->id)->orWhere('reviewer_id', $member->id))->exists()
+                    || DB::table('task_submissions')->where('reviewer_id', $member->id)->exists();
+                if ($hasHistory) {
+                    throw ValidationException::withMessages(['confirmation' => 'Pengguna memiliki riwayat tugas atau pemeriksaan dan tidak dapat dihapus.']);
+                }
+                $member->notifications()->delete();
+                DB::table('sessions')->where('user_id', $member->id)->delete();
+                DB::table('password_reset_tokens')->where('email', $member->email)->delete();
+                $member->delete();
+                WorkNotice::audit($request->user()->id, 'Pengguna dihapus', 'user', $member->id);
+            });
+        } catch (QueryException $exception) {
+            if (! in_array((string) $exception->getCode(), ['23000', '23503'], true)) {
+                throw $exception;
+            }
+            throw ValidationException::withMessages(['confirmation' => 'Pengguna masih terhubung dengan data lain dan tidak dapat dihapus.']);
+        }
+
+        return redirect()->route('users.index')->with('success', 'Pengguna berhasil dihapus.');
     }
 
     public function storeAccount(Request $request): RedirectResponse
