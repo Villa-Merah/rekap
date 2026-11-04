@@ -42,12 +42,11 @@ class UserGuideTest extends TestCase
 
         $response = $this->actingAs($member)->get('/guide')->assertOk()
             ->assertSee('Panduan Kacab & Superadmin', false)
-            ->assertSee('href="'.route('tasks.create').'"', false)
             ->assertSee('href="'.route('users.create').'"', false);
         if ($role === 'Superadmin') {
-            $response->assertSee('Menetapkan atasan pemeriksa tugas pribadi');
+            $response->assertSee('Menetapkan atasan pemeriksa tugas pribadi')->assertDontSee('href="'.route('tasks.create').'"', false);
         } else {
-            $response->assertDontSee('Menetapkan atasan pemeriksa tugas pribadi');
+            $response->assertDontSee('Menetapkan atasan pemeriksa tugas pribadi')->assertSee('href="'.route('tasks.create').'"', false);
         }
     }
 

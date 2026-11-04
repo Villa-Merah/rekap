@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class WorkController extends Controller
 {
-    private const USER_ROLES = ['Staff', 'Pengajar', 'Marketing', 'Operasional', 'Akademik', 'Keuangan', 'Kacab', 'Direktur', 'Direktur Utama', 'Komisaris', 'Superadmin'];
+    private const USER_ROLES = ['Staff', 'Pengajar', 'Marketing', 'Operasional', 'Akademik', 'Keuangan', 'Kacab', 'Direktur', 'Direktur Utama', 'Komisaris', 'Supervisor', 'Superadmin'];
 
     private function task(int $id): object
     {
@@ -32,7 +32,7 @@ class WorkController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $tasks = DB::table('work_tasks')->when($user->role !== 'Superadmin', function ($query) use ($user) {
+        $tasks = DB::table('work_tasks')->when(! WorkAccess::globalView($user), function ($query) use ($user) {
             $query->where(function ($query) use ($user) {
                 if (WorkAccess::manages($user)) {
                     $query->where('work_tasks.branch', $user->branch);
@@ -47,13 +47,13 @@ class WorkController extends Controller
         $scope = clone $tasks;
         $summary = [
             'total' => (clone $scope)->count(),
-            'waiting' => DB::table('task_assignments')->whereIn('task_id', (clone $scope)->select('work_tasks.id'))->where('reviewer_id', $user->id)->where('status', 'Menunggu verifikasi')->count(),
+            'waiting' => DB::table('task_assignments')->whereIn('task_id', (clone $scope)->select('work_tasks.id'))->when(! WorkAccess::globalView($user), fn ($query) => $query->where('reviewer_id', $user->id))->where('status', 'Menunggu verifikasi')->count(),
             'unfinished' => DB::table('task_assignments')->whereIn('task_id', (clone $scope)->select('work_tasks.id'))->where('user_id', $user->id)->whereNotIn('status', ['Disetujui', 'Ditolak'])->count(),
         ];
         if ($request->filled('status')) {
             $tasks->whereExists(function ($query) use ($request, $user) {
                 $query->selectRaw('1')->from('task_assignments')->whereColumn('task_id', 'work_tasks.id')->where('status', $request->string('status')->toString());
-                if (! WorkAccess::manages($user)) {
+                if (! WorkAccess::globalView($user) && ! WorkAccess::manages($user)) {
                     $query->where(fn ($q) => $q->where('user_id', $user->id)->orWhere('reviewer_id', $user->id));
                 }
             });
@@ -66,8 +66,8 @@ class WorkController extends Controller
 
     public function create(Request $request): View
     {
-        abort_unless(WorkAccess::manages($request->user()), 403);
-        $members = User::query()->when($request->user()->role !== 'Superadmin', fn ($q) => $q->where('branch', $request->user()->branch))->whereNotNull('branch')->orderBy('branch')->orderBy('name')->get();
+        abort_unless(WorkAccess::assignsTasks($request->user()), 403);
+        $members = User::query()->when($request->user()->role !== 'Supervisor', fn ($q) => $q->where('branch', $request->user()->branch))->whereNotNull('branch')->whereNotIn('role', ['Superadmin', 'Direktur Utama', 'Direktur', 'Komisaris'])->orderBy('branch')->orderBy('name')->get();
 
         return view('work.create', compact('members'));
     }
@@ -75,7 +75,7 @@ class WorkController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $actor = $request->user();
-        abort_unless(WorkAccess::manages($actor), 403);
+        abort_unless(WorkAccess::assignsTasks($actor), 403);
         $data = $request->validate([
             'title' => 'required|string|max:180', 'description' => 'required|string|max:5000',
             'branch' => 'required|string|max:255', 'platform' => ['required', Rule::in(array_keys(config('workflow.platforms')))],
@@ -85,40 +85,47 @@ class WorkController extends Controller
             'comment_instructions' => 'nullable|string|max:3000', 'evidence_instructions' => 'required|string|max:3000',
             'starts_at' => 'required|date_format:Y-m-d\TH:i', 'due_at' => 'required|date_format:Y-m-d\TH:i|after:starts_at',
         ]);
-        abort_unless(WorkAccess::manages($actor, $data['branch']), 403);
+        abort_unless(WorkAccess::assignsTasks($actor, $data['branch']), 403);
         if (array_diff($data['activities'], config('workflow.platforms')[$data['platform']])) {
             throw ValidationException::withMessages(['activities' => 'Aktivitas tidak tersedia untuk platform yang dipilih.']);
         }
         $members = User::whereIn('id', $data['recipients'])->get();
-        if ($members->contains(fn ($member) => $member->branch !== $data['branch'])) {
+        if ($members->contains(fn ($member) => $member->role === 'Superadmin' || WorkAccess::readOnly($member) || ! $member->branch || ($data['branch'] !== '*' && $member->branch !== $data['branch']))) {
             throw ValidationException::withMessages(['recipients' => 'Semua penerima harus berasal dari cabang tugas.']);
         }
         $reviewers = [];
         foreach ($members as $member) {
             $reviewer = $member->id === $actor->id ? $member->supervisor_id : $actor->id;
-            if (! $reviewer || $reviewer === $member->id) {
+            if (! $reviewer || $reviewer === $member->id || ($member->id === $actor->id && ! User::whereKey($reviewer)->where('role', 'Supervisor')->exists())) {
                 throw ValidationException::withMessages(['recipients' => 'Tugas pribadi memerlukan atasan pemeriksa. Minta Superadmin menetapkan atasan di halaman akun dan kuota.']);
             }
             $reviewers[$member->id] = $reviewer;
         }
-        $id = DB::transaction(function () use ($actor, $data, $reviewers) {
-            $id = DB::table('work_tasks')->insertGetId([
-                ...collect($data)->except(['recipients', 'starts_at', 'due_at', 'activities'])->all(),
-                'creator_id' => $actor->id, 'activities' => json_encode($data['activities']),
-                'starts_at' => CarbonImmutable::parse($data['starts_at'], config('workflow.timezone'))->utc(),
-                'due_at' => CarbonImmutable::parse($data['due_at'], config('workflow.timezone'))->utc(),
-                'created_at' => now(), 'updated_at' => now(),
-            ]);
-            foreach ($reviewers as $recipientId => $reviewerId) {
-                DB::table('task_assignments')->insert(['task_id' => $id, 'user_id' => $recipientId, 'reviewer_id' => $reviewerId, 'created_at' => now(), 'updated_at' => now()]);
-                WorkNotice::send($recipientId, 'Tugas baru: '.$data['title'], 'Anda menerima tugas '.$data['platform'].'. Periksa instruksi dan tenggat.', route('tasks.show', $id, false), 'task-created:'.$id);
-            }
-            WorkNotice::audit($actor->id, 'Tugas dibuat', 'task', $id, ['recipients' => array_keys($reviewers)]);
+        $id = DB::transaction(function () use ($actor, $data, $reviewers, $members) {
+            $ids = [];
+            foreach ($members->groupBy('branch') as $branch => $branchMembers) {
+                $id = DB::table('work_tasks')->insertGetId([
+                    ...collect($data)->except(['recipients', 'starts_at', 'due_at', 'activities'])->all(),
+                    'branch' => $branch, 'creator_id' => $actor->id, 'activities' => json_encode($data['activities']),
+                    'starts_at' => CarbonImmutable::parse($data['starts_at'], config('workflow.timezone'))->utc(),
+                    'due_at' => CarbonImmutable::parse($data['due_at'], config('workflow.timezone'))->utc(),
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                foreach ($branchMembers as $recipient) {
+                    $recipientId = $recipient->id;
+                    $reviewerId = $reviewers[$recipientId];
+                    DB::table('task_assignments')->insert(['task_id' => $id, 'user_id' => $recipientId, 'reviewer_id' => $reviewerId, 'created_at' => now(), 'updated_at' => now()]);
+                    WorkNotice::send($recipientId, 'Tugas baru: '.$data['title'], 'Anda menerima tugas '.$data['platform'].'. Periksa instruksi dan tenggat.', route('tasks.show', $id, false), 'task-created:'.$id);
+                }
+                WorkNotice::audit($actor->id, 'Tugas dibuat', 'task', $id, ['recipients' => $branchMembers->pluck('id')->all(), 'branch' => $branch]);
 
-            return $id;
+                $ids[] = $id;
+            }
+
+            return $ids;
         });
 
-        return redirect()->route('tasks.show', $id)->with('success', 'Tugas dibagikan dan notifikasi telah dikirim.');
+        return (count($id) === 1 ? redirect()->route('tasks.show', $id[0]) : redirect()->route('tasks.index'))->with('success', 'Tugas dibagikan dan notifikasi telah dikirim.');
     }
 
     public function show(Request $request, int $task): View
@@ -126,7 +133,7 @@ class WorkController extends Controller
         $task = $this->task($task);
         abort_unless(WorkAccess::canView($request->user(), $task), 403);
         $assignments = DB::table('task_assignments')->join('users', 'users.id', '=', 'task_assignments.user_id')->where('task_id', $task->id)
-            ->when(! WorkAccess::manages($request->user(), $task->branch), fn ($q) => $q->where(fn ($q) => $q->where('user_id', $request->user()->id)->orWhere('reviewer_id', $request->user()->id)))
+            ->when(! WorkAccess::globalView($request->user()) && ! WorkAccess::manages($request->user(), $task->branch), fn ($q) => $q->where(fn ($q) => $q->where('user_id', $request->user()->id)->orWhere('reviewer_id', $request->user()->id)))
             ->select('task_assignments.*', 'users.name')->get();
         $submissions = DB::table('task_submissions')->whereIn('assignment_id', $assignments->pluck('id'))->orderByDesc('id')->get();
         $evidence = DB::table('task_evidence')->whereIn('submission_id', $submissions->pluck('id'))->get()->groupBy('submission_id');
@@ -137,6 +144,7 @@ class WorkController extends Controller
 
     public function start(Request $request, int $assignment): RedirectResponse
     {
+        abort_if($request->user()->role === 'Superadmin', 403);
         DB::transaction(function () use ($request, $assignment) {
             $row = DB::table('task_assignments')->lockForUpdate()->find($assignment);
             abort_unless($row && $row->user_id === $request->user()->id, 403);
@@ -153,6 +161,7 @@ class WorkController extends Controller
 
     public function submit(Request $request, int $assignment): RedirectResponse
     {
+        abort_if($request->user()->role === 'Superadmin', 403);
         $row = DB::table('task_assignments')->find($assignment);
         abort_unless($row && $row->user_id === $request->user()->id, 403);
         $task = $this->task($row->task_id);
@@ -220,7 +229,7 @@ class WorkController extends Controller
             abort_unless($snapshot, 404);
             $assignment = DB::table('task_assignments')->lockForUpdate()->find($snapshot->assignment_id);
             $actor = $request->user();
-            abort_unless($actor->id !== $assignment->user_id && ($actor->id === $assignment->reviewer_id || $actor->role === 'Superadmin'), 403);
+            abort_unless(WorkAccess::reviews($actor, $assignment), 403);
             $latest = DB::table('task_submissions')->where('assignment_id', $assignment->id)->max('id');
             if ($latest !== $snapshot->id || $assignment->status !== 'Menunggu verifikasi' || $snapshot->status !== 'Menunggu verifikasi') {
                 throw ValidationException::withMessages(['status' => 'Bukti ini sudah diperiksa atau telah digantikan revisi terbaru.']);
@@ -243,7 +252,7 @@ class WorkController extends Controller
         $assignment = DB::table('task_assignments')->find($submission->assignment_id);
         $task = $this->task($assignment->task_id);
         $actor = $request->user();
-        abort_unless(in_array($actor->id, [$assignment->user_id, $assignment->reviewer_id]) || WorkAccess::manages($actor, $task->branch), 403);
+        abort_unless(in_array($actor->id, [$assignment->user_id, $assignment->reviewer_id]) || WorkAccess::globalView($actor) || WorkAccess::manages($actor, $task->branch), 403);
         abort_unless(Storage::disk('local')->exists($file->path), 404);
 
         return response()->file(Storage::disk('local')->path($file->path), ['Content-Type' => $file->mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
@@ -252,11 +261,11 @@ class WorkController extends Controller
     public function accounts(Request $request): View
     {
         $actor = $request->user();
-        $members = User::query()->when($actor->role !== 'Superadmin', fn ($q) => WorkAccess::manages($actor) ? $q->where('branch', $actor->branch) : $q->where('id', $actor->id))->orderBy('name')->get();
+        $members = User::query()->when(! WorkAccess::globalView($actor), fn ($q) => WorkAccess::manages($actor) ? $q->where('branch', $actor->branch) : $q->where('id', $actor->id))->orderBy('name')->get();
         $accounts = DB::table('social_accounts')->join('users', 'users.id', '=', 'social_accounts.user_id')->whereIn('user_id', $members->pluck('id'))->select('social_accounts.*', 'users.name as owner_name')->orderByDesc('social_accounts.id')->paginate(20);
         $counts = DB::table('social_accounts')->whereIn('user_id', $members->pluck('id'))->selectRaw('user_id, platform, count(*) as total')->groupBy('user_id', 'platform')->get()->keyBy(fn ($row) => $row->user_id.':'.$row->platform);
         $quotas = DB::table('account_quotas')->whereIn('user_id', $members->pluck('id'))->get()->keyBy(fn ($row) => $row->user_id.':'.$row->platform);
-        $supervisors = $actor->role === 'Superadmin' ? User::orderBy('name')->get() : collect();
+        $supervisors = $actor->role === 'Superadmin' ? User::where('role', 'Supervisor')->orderBy('name')->get() : collect();
 
         return view('work.accounts', compact('accounts', 'members', 'counts', 'quotas', 'supervisors'));
     }
@@ -303,7 +312,7 @@ class WorkController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'role' => ['required', Rule::in($manageableRoles)],
-            'branch' => 'nullable|required_unless:role,Superadmin|string|max:255',
+            'branch' => 'nullable|required_unless:role,Superadmin,Supervisor|string|max:255',
             'password' => 'required|string|min:8|confirmed',
         ]);
         $branch = $actor->role === 'Superadmin' ? ($data['branch'] ?? null) : $actor->branch;
@@ -373,7 +382,7 @@ class WorkController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($member->id)],
             'role' => ['required', Rule::in($roles)],
-            'branch' => 'nullable|required_unless:role,Superadmin|string|max:255',
+            'branch' => 'nullable|required_unless:role,Superadmin,Supervisor|string|max:255',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
         if ($member->id === $actor->id && $data['role'] !== $member->role) {
@@ -442,6 +451,7 @@ class WorkController extends Controller
 
     public function storeAccount(Request $request): RedirectResponse
     {
+        abort_if($request->user()->role === 'Superadmin', 403);
         $data = $request->validate([
             'platform' => ['required', Rule::in(config('workflow.account_platforms'))], 'name' => 'required|string|max:180',
             'identity' => ['required', 'string', 'max:180', Rule::unique('social_accounts')->where(fn ($q) => $q->where('user_id', $request->user()->id)->where('platform', $request->input('platform')))],
@@ -471,7 +481,7 @@ class WorkController extends Controller
     public function supervisor(Request $request): RedirectResponse
     {
         abort_unless($request->user()->role === 'Superadmin', 403);
-        $data = $request->validate(['user_id' => 'required|integer|exists:users,id', 'supervisor_id' => 'required|integer|different:user_id|exists:users,id']);
+        $data = $request->validate(['user_id' => 'required|integer|exists:users,id', 'supervisor_id' => ['required', 'integer', 'different:user_id', Rule::exists('users', 'id')->where('role', 'Supervisor')]]);
         DB::transaction(function () use ($request, $data) {
             User::where('id', $data['user_id'])->update(['supervisor_id' => $data['supervisor_id']]);
             WorkNotice::audit($request->user()->id, 'Atasan pemeriksa ditetapkan', 'user', (int) $data['user_id'], $data);

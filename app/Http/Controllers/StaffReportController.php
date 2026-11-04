@@ -85,7 +85,7 @@ class StaffReportController extends Controller
         }
 
         $actor = $request->user();
-        $members = User::query()->where('role', '!=', 'Superadmin')->when($actor->role !== 'Superadmin', fn ($query) => WorkAccess::manages($actor)
+        $members = User::query()->where('role', '!=', 'Superadmin')->when(! WorkAccess::globalView($actor), fn ($query) => WorkAccess::manages($actor)
             ? $query->where('branch', $actor->branch)
             : $query->where('id', $actor->id))->orderBy('name')->get();
         $member = isset($input['user_id'])

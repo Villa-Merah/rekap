@@ -81,7 +81,7 @@
         platform.onchange = update; update();
         const branch = document.getElementById('task-branch');
         const updateBranch = () => document.querySelectorAll('[data-branch]').forEach(label => {
-            const match = label.dataset.branch === branch.value;
+            const match = branch.value === '*' || label.dataset.branch === branch.value;
             label.hidden = !match; label.querySelector('input').disabled = !match;
             if (!match) label.querySelector('input').checked = false;
         });

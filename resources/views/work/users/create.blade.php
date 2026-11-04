@@ -22,7 +22,7 @@
                 </select>
             </label>
             @if(auth()->user()->role === 'Superadmin')
-                <label>Cabang (kosongkan untuk Superadmin)
+                <label>Cabang (kosongkan untuk Superadmin / Supervisor)
                     <input name="branch" value="{{ old('branch') }}" maxlength="255">
                 </label>
             @else

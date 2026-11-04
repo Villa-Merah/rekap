@@ -136,7 +136,7 @@ class WorkflowTest extends TestCase
         Storage::fake('local');
         $admin = $this->member('Superadmin');
         $manager = $this->member('Kacab');
-        $supervisor = $this->member('Direktur', 'Pusat');
+        $supervisor = $this->member('Supervisor', 'Pusat');
         $payload = $this->payload($manager);
         $this->actingAs($manager)->post('/tasks', $payload)->assertSessionHasErrors('recipients');
         $this->actingAs($admin)->post('/supervisors', ['user_id' => $manager->id, 'supervisor_id' => $manager->id])->assertSessionHasErrors('supervisor_id');
