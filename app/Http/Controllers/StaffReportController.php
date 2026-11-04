@@ -23,6 +23,7 @@ class StaffReportController extends Controller
     public function download(Request $request): Response
     {
         $data = $this->data($request);
+        abort_unless($data['member'], 404);
         $evidenceImages = [];
         $evidenceBytes = 0;
         foreach ($data['evidence']->flatten(1) as $file) {
@@ -56,7 +57,7 @@ class StaffReportController extends Controller
             return response()->view('work.reports', [...$data, 'pdfError' => 'PDF belum dapat dibuat. Pastikan dependensi Composer dan ekstensi PHP GD sudah terpasang serta folder storage dapat ditulis, lalu coba kembali.'], 503);
         }
 
-        $filename = 'laporan-staf-'.$data['member']->id.'-'.$data['from'].'-'.$data['to'].'.pdf';
+        $filename = 'laporan-aktivitas-'.$data['member']->id.'-'.$data['from'].'-'.$data['to'].'.pdf';
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
@@ -84,11 +85,17 @@ class StaffReportController extends Controller
         }
 
         $actor = $request->user();
-        $members = User::query()->when($actor->role !== 'Superadmin', fn ($query) => WorkAccess::manages($actor)
+        $members = User::query()->where('role', '!=', 'Superadmin')->when($actor->role !== 'Superadmin', fn ($query) => WorkAccess::manages($actor)
             ? $query->where('branch', $actor->branch)
             : $query->where('id', $actor->id))->orderBy('name')->get();
-        $member = $members->firstWhere('id', (int) ($input['user_id'] ?? $actor->id));
-        abort_unless($member, 404);
+        $member = isset($input['user_id'])
+            ? $members->firstWhere('id', (int) $input['user_id'])
+            : ($actor->role === 'Superadmin' ? $members->first() : $members->firstWhere('id', $actor->id));
+        if (! $member) {
+            abort_if(isset($input['user_id']) || $members->isNotEmpty(), 404);
+
+            return compact('members', 'member', 'from', 'to');
+        }
 
         $assignments = DB::table('task_assignments')
             ->join('work_tasks', 'work_tasks.id', '=', 'task_assignments.task_id')

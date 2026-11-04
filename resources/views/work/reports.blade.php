@@ -1,13 +1,18 @@
 @extends('work.layout')
-@section('title', 'Laporan staf')
-@section('subtitle', 'Rekap tugas, akun terdaftar, dan bukti aktivitas per staf dalam satu laporan PDF.')
+@section('title', 'Laporan aktivitas')
+@section('subtitle', 'Rekap tugas, akun terdaftar, dan bukti aktivitas per pengguna dalam satu laporan PDF.')
 @section('heading-action')
+@if($member)
 <a class="primary" href="{{ route('reports.download', ['user_id' => $member->id, 'from' => $from, 'to' => $to]) }}">Unduh PDF</a>
+@endif
 @endsection
 @section('content')
+@if(!$member)
+<section class="panel empty"><h2>Belum ada pengguna yang dapat dilaporkan.</h2><p>Laporan aktivitas berlaku untuk semua pengguna selain Superadmin.</p><a class="outline" href="{{ route('users.index') }}">Lihat data pengguna</a></section>
+@else
 @isset($pdfError)<p class="flash error" role="alert">{{ $pdfError }}</p>@endisset
 <form class="panel form-grid" method="get" action="{{ route('reports.index') }}">
-    <label>Staf / pengguna<select name="user_id">@foreach($members as $person)<option value="{{ $person->id }}" @selected($member->id === $person->id)>{{ $person->name }} · {{ $person->branch ?? 'Tanpa cabang' }}</option>@endforeach</select></label>
+    <label>Pengguna<select name="user_id">@foreach($members as $person)<option value="{{ $person->id }}" @selected($member->id === $person->id)>{{ $person->name }} · {{ $person->role }} · {{ $person->branch ?? 'Tanpa cabang' }}</option>@endforeach</select></label>
     <div class="form-grid"><label>Dari tanggal<input type="date" name="from" required value="{{ $from }}"></label><label>Sampai tanggal<input type="date" name="to" required value="{{ $to }}"></label></div>
     <div class="full"><button class="outline">Tampilkan laporan</button></div>
 </form>
@@ -32,4 +37,5 @@
 </article>
 @empty<p class="empty">Tidak ada tugas diterima pada periode ini.</p>@endforelse
 </section>
+@endif
 @endsection

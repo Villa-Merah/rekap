@@ -20,7 +20,7 @@
         <td data-label="Cabang">{{ $member->branch ?: 'Tidak ditetapkan' }}</td>
         <td data-label="Akses akun"><span>{{ $member->must_change_password ? 'Wajib ganti kata sandi awal' : 'Kata sandi sudah diatur' }}</span><small>{{ $member->omni_id !== null ? 'SSO terhubung' : 'SSO belum terhubung' }}</small></td>
         <td data-label="Terdaftar">{{ $member->created_at ? $member->created_at->setTimezone(config('workflow.timezone'))->format('d M Y') : '—' }}</td>
-        <td data-label="Laporan"><a class="text-link" href="{{ route('reports.index', ['user_id' => $member->id]) }}">Lihat laporan →</a></td>
+        <td data-label="Laporan">@if($member->role === 'Superadmin')<span class="muted">Tidak berlaku</span>@else<a class="text-link" href="{{ route('reports.index', ['user_id' => $member->id]) }}">Lihat laporan →</a>@endif</td>
     </tr>
     @empty<tr><td class="user-empty" colspan="7">Tidak ada pengguna yang sesuai pencarian. Coba ubah filter atau tambah pengguna baru.</td></tr>@endforelse
     </tbody></table></div>

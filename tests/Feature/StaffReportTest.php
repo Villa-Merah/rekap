@@ -104,7 +104,7 @@ class StaffReportTest extends TestCase
             ->assertOk()->assertSee('&lt;script&gt;', false)->assertDontSee('old.png')->assertDontSee('Revisi lama rahasia');
         $response = $this->get('/reports/pdf?from=2026-11-01&to=2026-11-03')
             ->assertOk()->assertHeader('Content-Type', 'application/pdf')
-            ->assertDownload('laporan-staf-'.$staff->id.'-2026-11-01-2026-11-03.pdf');
+            ->assertDownload('laporan-aktivitas-'.$staff->id.'-2026-11-01-2026-11-03.pdf');
         $this->assertStringStartsWith('%PDF-', $response->getContent());
         $this->assertStringContainsString('/Subtype /Image', $response->getContent());
         $this->assertSame($before, File::directories(storage_path('app/private/report-temp')));
@@ -185,5 +185,58 @@ class StaffReportTest extends TestCase
             ->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->assertStringContainsString('/Subtype /Image', $response->getContent());
         Storage::disk('local')->assertExists($path);
+    }
+
+    #[TestWith(['Staff'])]
+    #[TestWith(['Marketing'])]
+    #[TestWith(['Kacab'])]
+    #[TestWith(['Direktur'])]
+    #[TestWith(['Direktur Utama'])]
+    #[TestWith(['Komisaris'])]
+    #[TestWith(['Keuangan'])]
+    #[TestWith(['Akademik'])]
+    #[TestWith(['Operasional'])]
+    #[TestWith(['Pengajar'])]
+    public function test_every_non_superadmin_role_can_view_and_download_own_report(string $role): void
+    {
+        $member = $this->member($role);
+        $this->actingAs($member)->get('/reports?from=2026-11-01&to=2026-11-03')->assertOk()
+            ->assertSee('Laporan aktivitas')->assertViewHas('member', fn ($person): bool => $person->id === $member->id);
+        $this->get('/reports/pdf?from=2026-11-01&to=2026-11-03')->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf')
+            ->assertDownload('laporan-aktivitas-'.$member->id.'-2026-11-01-2026-11-03.pdf');
+    }
+
+    public function test_superadmin_manages_reports_but_is_excluded_as_a_report_subject(): void
+    {
+        $admin = $this->member('Superadmin');
+        $otherAdmin = $this->member('Superadmin');
+        $member = $this->member('Marketing');
+        $this->actingAs($admin)->get('/reports')->assertOk()
+            ->assertViewHas('member', fn ($person): bool => $person->id === $member->id)
+            ->assertViewHas('members', fn ($people): bool => $people->count() === 1 && ! $people->contains('role', 'Superadmin'));
+        $this->get('/reports?user_id='.$admin->id)->assertNotFound();
+        $this->get('/reports/pdf?user_id='.$admin->id)->assertNotFound();
+        $this->get('/reports?user_id='.$otherAdmin->id)->assertNotFound();
+        $this->get('/reports/pdf?user_id='.$member->id)->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->get('/users')->assertOk()->assertDontSee('href="'.route('reports.index', ['user_id' => $admin->id]).'"', false);
+    }
+
+    public function test_superadmin_without_reportable_users_sees_an_empty_state(): void
+    {
+        $admin = $this->member('Superadmin');
+        $this->actingAs($admin)->get('/reports')->assertOk()->assertSee('Belum ada pengguna yang dapat dilaporkan.')
+            ->assertDontSee('Unduh PDF');
+        $this->get('/reports/pdf')->assertNotFound();
+    }
+
+    public function test_kacab_cannot_select_superadmin_from_the_same_branch(): void
+    {
+        $manager = $this->member('Kacab');
+        $admin = $this->member('Superadmin');
+        $this->actingAs($manager)->get('/reports')->assertOk()
+            ->assertViewHas('members', fn ($people): bool => ! $people->contains('role', 'Superadmin'));
+        $this->get('/reports?user_id='.$admin->id)->assertNotFound();
+        $this->get('/reports/pdf?user_id='.$admin->id)->assertNotFound();
     }
 }
