@@ -262,12 +262,32 @@ class WorkController extends Controller
     {
         $actor = $request->user();
         $members = User::query()->when(! WorkAccess::globalView($actor), fn ($q) => WorkAccess::manages($actor) ? $q->where('branch', $actor->branch) : $q->where('id', $actor->id))->orderBy('name')->get();
-        $accounts = DB::table('social_accounts')->join('users', 'users.id', '=', 'social_accounts.user_id')->whereIn('user_id', $members->pluck('id'))->select('social_accounts.*', 'users.name as owner_name')->orderByDesc('social_accounts.id')->paginate(20);
         $counts = DB::table('social_accounts')->whereIn('user_id', $members->pluck('id'))->selectRaw('user_id, platform, count(*) as total')->groupBy('user_id', 'platform')->get()->keyBy(fn ($row) => $row->user_id.':'.$row->platform);
         $quotas = DB::table('account_quotas')->whereIn('user_id', $members->pluck('id'))->get()->keyBy(fn ($row) => $row->user_id.':'.$row->platform);
         $supervisors = $actor->role === 'Superadmin' ? User::where('role', 'Supervisor')->orderBy('name')->get() : collect();
 
-        return view('work.accounts', compact('accounts', 'members', 'counts', 'quotas', 'supervisors'));
+        return view('work.accounts', compact('members', 'counts', 'quotas', 'supervisors'));
+    }
+
+    public function accountList(Request $request): View
+    {
+        $filters = $request->validate([
+            'q' => 'nullable|string|max:100',
+            'platform' => ['nullable', Rule::in(config('workflow.account_platforms'))],
+        ]);
+        $actor = $request->user();
+        $accounts = DB::table('social_accounts')->join('users', 'users.id', '=', 'social_accounts.user_id')
+            ->when(! WorkAccess::globalView($actor), fn ($query) => WorkAccess::manages($actor)
+                ? $query->where('users.branch', $actor->branch)
+                : $query->where('social_accounts.user_id', $actor->id))
+            ->when($filters['platform'] ?? null, fn ($query, $platform) => $query->where('social_accounts.platform', $platform))
+            ->when($filters['q'] ?? null, fn ($query, $keyword) => $query->where(fn ($query) => $query
+                ->where('users.name', 'like', '%'.$keyword.'%')->orWhere('social_accounts.name', 'like', '%'.$keyword.'%')
+                ->orWhere('social_accounts.identity', 'like', '%'.$keyword.'%')))
+            ->select('social_accounts.*', 'users.name as owner_name', 'users.branch as owner_branch')
+            ->orderByDesc('social_accounts.id')->paginate(20)->withQueryString();
+
+        return view('work.account-list', compact('accounts'));
     }
 
     public function users(Request $request): View

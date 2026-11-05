@@ -33,6 +33,7 @@ Route::middleware(['auth', EnsurePasswordIsChanged::class, EnforceReadOnlyRole::
     Route::post('/submissions/{submission}/review', [WorkController::class, 'review'])->name('submissions.review');
     Route::get('/evidence/{evidence}', [WorkController::class, 'evidence'])->name('evidence.show');
     Route::get('/accounts', [WorkController::class, 'accounts'])->name('accounts.index');
+    Route::get('/accounts/list', [WorkController::class, 'accountList'])->name('accounts.list');
     Route::post('/accounts', [WorkController::class, 'storeAccount'])->name('accounts.store');
     Route::post('/account-quotas', [WorkController::class, 'quota'])->name('accounts.quota');
     Route::get('/users', [WorkController::class, 'users'])->name('users.index');

@@ -41,5 +41,5 @@
     </div>
 </section>
 
-<section class="panel table-panel"><h2>Akun terdaftar</h2><div class="table-scroll"><table><thead><tr><th>Pemilik</th><th>Platform</th><th>Akun</th><th>Status</th></tr></thead><tbody>@forelse($accounts as $account)<tr><td>{{ $account->owner_name }}</td><td>{{ $account->platform }}</td><td>{{ $account->name }}<small>{{ $account->identity }}</small>@if($account->profile_url)<a href="{{ $account->profile_url }}" target="_blank" rel="noopener noreferrer">Buka profil ↗</a>@endif</td><td>{{ $account->status }}</td></tr>@empty<tr><td colspan="4">Belum ada akun yang didaftarkan.</td></tr>@endforelse</tbody></table></div>{{ $accounts->links() }}</section>
+<section class="panel"><h2>Daftar akun</h2><p class="muted">Cari dan lihat akun terdaftar berdasarkan pemilik, nama akun, identitas, atau platform.</p><a class="outline" href="{{ route('accounts.list') }}">Buka daftar akun →</a></section>
 @endsection
