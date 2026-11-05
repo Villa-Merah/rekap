@@ -23,6 +23,7 @@
             <noscript><p>Aktifkan JavaScript dan izinkan popup untuk masuk melalui SIVMI.</p></noscript>
         </div>
         <p class="sso-divider">atau gunakan akun organisasi</p>
+        @if(session('status'))<p class="flash success" role="status">{{ session('status') }}</p>@endif
         <form method="post" action="{{ route('login') }}">
             @csrf
             <label>Email
@@ -48,6 +49,7 @@
             @error('email')
                 <p class="error">{{ $message }}</p>
             @enderror
+            <p class="forgot-password-link"><a class="text-link" href="{{ route('password.request') }}">Lupa kata sandi?</a></p>
             <button class="primary" type="submit">Masuk ke ruang kerja →</button>
         </form>
         <small>Akses aman untuk anggota organisasi.</small>

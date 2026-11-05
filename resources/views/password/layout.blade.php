@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>@yield('title') · Rekap Buzzer</title><link rel="stylesheet" href="{{ asset('communication.css') }}?v={{ filemtime(public_path('communication.css')) }}"><link rel="stylesheet" href="{{ asset('login.css') }}?v={{ filemtime(public_path('login.css')) }}"><script src="{{ asset('password-visibility.js') }}" defer></script></head>
+<body class="login-page"><main class="login-card"><a class="brand" href="{{ route('login') }}"><img class="brand-logo" src="{{ asset('logo-villa-merah.png') }}?v={{ filemtime(public_path('logo-villa-merah.png')) }}" alt="Bimbel Gambar Villa Merah" width="84" height="84"><span>Rekap Buzzer</span></a><p class="eyebrow">PEMULIHAN AKUN</p><h1>@yield('title')</h1><p class="muted">@yield('subtitle')</p>
+@if(session('status'))<p class="flash success" role="status">{{ session('status') }}</p>@endif
+@if($errors->any())<div class="error" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+@yield('content')<p><a class="text-link" href="{{ route('login') }}">← Kembali ke halaman masuk</a></p></main></body></html>

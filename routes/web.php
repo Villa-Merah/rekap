@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\CommunicationController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\OmniLoginController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\StaffReportController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\WorkController;
@@ -12,6 +13,10 @@ use App\Http\Middleware\EnsurePasswordIsChanged;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'email'])->middleware('throttle:5,1')->name('password.email');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'form'])->where('token', '[a-fA-F0-9]{64}')->name('password.reset');
+    Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:10,1')->name('password.store');
     Route::post('/omni/prepare', [OmniLoginController::class, 'prepare'])->middleware('throttle:10,1')->name('omni.prepare');
     Route::get('/omni/callback', [OmniLoginController::class, 'callback'])->middleware('throttle:20,1')->name('omni.callback');
     Route::get('/login', [CommunicationController::class, 'loginForm'])->name('login');
