@@ -1,0 +1,143 @@
+.mobile-nav {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.menu-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: white;
+    color: var(--ink);
+    font-size: 19px;
+}
+
+.sidebar-backdrop {
+    display: none;
+}
+
+@media (max-width: 720px) {
+    .mobile-nav {
+        gap: 10px;
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+
+    .mobile-nav > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .sidebar {
+        position: fixed;
+        z-index: 1001;
+        inset: 0 auto 0 0;
+        width: min(300px, calc(100vw - 48px));
+        height: 100vh;
+        height: 100dvh;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        gap: 0;
+        padding: 24px 18px;
+        overflow-y: auto;
+        transform: translateX(-105%);
+        visibility: hidden;
+        box-shadow: 12px 0 32px rgb(22 39 34 / 14%);
+        transition: transform 200ms ease, visibility 200ms ease;
+    }
+
+    body.sidebar-open .sidebar {
+        transform: translateX(0);
+        visibility: visible;
+    }
+
+    .sidebar-content {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .sidebar .brand .brand-logo {
+        width: 48px;
+        height: 48px;
+    }
+
+    .sidebar .workspace,
+    .sidebar .nav-label,
+    .sidebar .nav-link,
+    .sidebar .sidebar-note {
+        display: block;
+    }
+
+    .sidebar .nav-label {
+        margin-top: 20px;
+    }
+
+    .sidebar .nav-link {
+        order: initial;
+        padding: 11px 12px;
+        font-size: 13px;
+    }
+
+    .sidebar .profile {
+        order: initial;
+        flex: 0 0 auto;
+        margin: 16px 0 0;
+        padding: 16px 0 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .sidebar .profile .avatar,
+    .sidebar .profile small {
+        display: block;
+    }
+
+    .sidebar .profile > div {
+        max-width: none;
+    }
+
+    .sidebar-backdrop {
+        position: fixed;
+        z-index: 1000;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: rgb(18 29 26 / 48%);
+    }
+
+    body.sidebar-open .sidebar-backdrop {
+        display: block;
+    }
+
+    body.sidebar-open {
+        overflow: hidden;
+    }
+
+    header {
+        gap: 10px;
+    }
+
+    .header-actions {
+        flex: 0 0 auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sidebar {
+        transition: none;
+    }
+}
