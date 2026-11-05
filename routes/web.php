@@ -5,6 +5,7 @@ use App\Http\Controllers\CommunicationController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\OmniLoginController;
 use App\Http\Controllers\StaffReportController;
+use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\WorkController;
 use App\Http\Middleware\EnforceReadOnlyRole;
 use App\Http\Middleware\EnsurePasswordIsChanged;
@@ -24,6 +25,8 @@ Route::middleware(['auth', EnsurePasswordIsChanged::class, EnforceReadOnlyRole::
     Route::view('/guide', 'work.guide')->name('guide');
     Route::get('/reports', [StaffReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/pdf', [StaffReportController::class, 'download'])->middleware('throttle:6,1')->name('reports.download');
+    Route::get('/verifications', [VerificationController::class, 'index'])->name('verifications.index');
+    Route::get('/verifications/{assignment}', [VerificationController::class, 'show'])->whereNumber('assignment')->name('verifications.show');
     Route::get('/tasks', [WorkController::class, 'index'])->name('tasks.index');
     Route::get('/tasks/create', [WorkController::class, 'create'])->name('tasks.create');
     Route::post('/tasks', [WorkController::class, 'store'])->name('tasks.store');

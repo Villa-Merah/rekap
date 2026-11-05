@@ -65,7 +65,8 @@ class SupervisorAccessTest extends TestCase
         $this->post('/submissions/'.$submission.'/review', ['status' => 'Disetujui'])->assertForbidden();
         $this->assertDatabaseHas('task_assignments', ['id' => $assignment->id, 'status' => 'Menunggu verifikasi']);
         $this->actingAs($supervisor)->get('/tasks?status=Menunggu%20verifikasi')->assertOk()->assertSee('Tugas lintas cabang');
-        $this->get('/tasks/'.$assignment->task_id)->assertOk()->assertSee('Simpan hasil pemeriksaan');
+        $this->get('/tasks/'.$assignment->task_id)->assertOk()->assertSee('Buka verifikasi bukti')->assertDontSee('Simpan hasil pemeriksaan');
+        $this->get('/verifications/'.$assignment->id)->assertOk()->assertSee('Simpan hasil pemeriksaan');
         $this->post('/submissions/'.$submission.'/review', ['status' => 'Disetujui'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseHas('task_assignments', ['id' => $assignment->id, 'status' => 'Disetujui']);
         $this->assertDatabaseHas('task_submissions', ['id' => $submission, 'reviewer_id' => $supervisor->id]);

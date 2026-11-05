@@ -1,5 +1,8 @@
 <p class="nav-label">RUANG KERJA</p>
-<a class="nav-link {{ request()->is('tasks*') ? 'active' : '' }}" href="{{ route('tasks.index') }}">▤ Tugas & verifikasi</a>
+<a class="nav-link {{ request()->is('tasks*') ? 'active' : '' }}" href="{{ route('tasks.index') }}">▤ Tugas</a>
+@if(\App\Services\WorkAccess::assignsTasks(auth()->user()))
+<a class="nav-link {{ request()->routeIs('verifications.*') ? 'active' : '' }}" href="{{ route('verifications.index') }}">✓ Verifikasi</a>
+@endif
 <a class="nav-link {{ request()->routeIs('accounts.index') ? 'active' : '' }}" href="{{ route('accounts.index') }}">◎ Akun & target</a>
 <a class="nav-link {{ request()->routeIs('accounts.list') ? 'active' : '' }}" href="{{ route('accounts.list') }}">▤ Daftar akun</a>
 @if(\App\Services\WorkAccess::manages(auth()->user()))

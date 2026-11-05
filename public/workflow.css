@@ -34,3 +34,4 @@
 @media(max-width:720px){.user-directory-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.user-directory-filters input{grid-column:1/-1;min-width:0;width:100%}.user-directory-filters select{width:100%;min-width:0}.user-directory-filters>.outline{display:flex;align-items:center;justify-content:center}}
 .profile-progress{display:block;width:100%;height:14px;accent-color:#07856d}
 @media(max-width:720px){.account-list-table td:not(.user-empty){display:block}.account-list-table td:before{display:block;margin-bottom:6px}.account-list-table td>div{min-width:0;overflow-wrap:anywhere}}
+@media(max-width:720px){.verification-table td:not(.user-empty){display:block}.verification-table td:before{display:block;margin-bottom:6px}.verification-table td>div{min-width:0;overflow-wrap:anywhere}}

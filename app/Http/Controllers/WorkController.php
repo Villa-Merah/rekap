@@ -47,7 +47,7 @@ class WorkController extends Controller
         $scope = clone $tasks;
         $summary = [
             'total' => (clone $scope)->count(),
-            'waiting' => DB::table('task_assignments')->whereIn('task_id', (clone $scope)->select('work_tasks.id'))->when(! WorkAccess::globalView($user), fn ($query) => $query->where('reviewer_id', $user->id))->where('status', 'Menunggu verifikasi')->count(),
+            'waiting' => DB::table('task_assignments')->where('user_id', '!=', $user->id)->whereIn('task_id', (clone $scope)->select('work_tasks.id'))->when(! WorkAccess::globalView($user), fn ($query) => $query->where('reviewer_id', $user->id))->where('status', 'Menunggu verifikasi')->count(),
             'unfinished' => DB::table('task_assignments')->whereIn('task_id', (clone $scope)->select('work_tasks.id'))->where('user_id', $user->id)->whereNotIn('status', ['Disetujui', 'Ditolak'])->count(),
         ];
         if ($request->filled('status')) {
@@ -210,7 +210,7 @@ class WorkController extends Controller
                 }
                 DB::table('task_submissions')->where('id', $id)->update(['reported_activities' => json_encode($activities)]);
                 DB::table('task_assignments')->where('id', $assignment)->update(['status' => 'Menunggu verifikasi', 'updated_at' => now()]);
-                WorkNotice::send($row->reviewer_id, 'Bukti menunggu verifikasi', $request->user()->name.' mengirim bukti untuk '.$task->title.'.', route('tasks.show', $task->id, false), 'submission:'.$id);
+                WorkNotice::send($row->reviewer_id, 'Bukti menunggu verifikasi', $request->user()->name.' mengirim bukti untuk '.$task->title.'.', route('verifications.show', $assignment, false), 'submission:'.$id);
                 WorkNotice::audit($request->user()->id, 'Bukti dikirim', 'submission', $id, ['revision' => $revision]);
             });
         } catch (\Throwable $error) {

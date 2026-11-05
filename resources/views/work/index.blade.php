@@ -1,6 +1,6 @@
 @extends('work.layout')
-@section('title', 'Tugas & verifikasi')
-@section('subtitle', 'Pantau penugasan, kirim hasil, dan periksa bukti aktivitas tim.')
+@section('title', 'Tugas')
+@section('subtitle', 'Kelola penugasan, baca instruksi, dan kirim hasil pengerjaan beserta bukti.')
 @section('heading-action')
 @if(\App\Services\WorkAccess::assignsTasks(auth()->user()))<a class="primary" href="{{ route('tasks.create') }}">+ Buat tugas</a>@endif
 @endsection
